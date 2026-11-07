@@ -1,0 +1,5 @@
+# Optional step 8 only (local scan). Install in its own venv (.venv-local).
+# Package and extra from https://learn.microsoft.com/azure/foundry/how-to/develop/run-scans-ai-red-teaming-agent
+# Learn gives no minimum version for either package. PyRIT needs Python 3.10-3.13.
+azure-ai-evaluation[redteam]
+azure-identity

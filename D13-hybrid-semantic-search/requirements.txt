@@ -1,0 +1,9 @@
+# Minimum versions as Microsoft Learn gives them (checked 2026-11-07):
+# azure-search-documents: 12.0.0 is the current GA version on the Python reference page,
+#   https://learn.microsoft.com/python/api/overview/azure/search-documents-readme
+#   Don't use the 12.1.0 betas: their models use different names (types.VectorizedQuery, k).
+# openai and azure-identity: Learn gives no minimum version for the v1 embeddings call,
+#   https://learn.microsoft.com/azure/foundry/openai/how-to/embeddings
+azure-search-documents>=12.0.0
+azure-identity
+openai

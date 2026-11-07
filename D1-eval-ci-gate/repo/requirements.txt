@@ -1,0 +1,4 @@
+# Minimum version from Microsoft Learn (cloud evaluation SDK setup).
+azure-ai-projects>=2.2.0
+azure-identity
+openai

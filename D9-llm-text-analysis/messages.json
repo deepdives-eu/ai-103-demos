@@ -1,0 +1,22 @@
+[
+  {
+    "id": "msg-01",
+    "channel": "email",
+    "text": "Hi, I ordered the Nordlys desk lamp last week (order NL-48213). It arrived two days early and looks great on my desk. Thanks!"
+  },
+  {
+    "id": "msg-02",
+    "channel": "chat",
+    "text": "The delivery driver was really friendly, I'll give you that. But the coffee grinder I got makes a grinding noise that is definitely not coffee. Second one this year. I'm starting to lose patience."
+  },
+  {
+    "id": "msg-03",
+    "channel": "web form",
+    "text": "Please update my details. Name: Testy McExample. Phone: +358 40 000 0000. Email: testy.mcexample@example.com. Card on file: 4111 1111 1111 1111 (yes this is a test card number). I moved to Fakestreet 1, 00000 Nowhere."
+  },
+  {
+    "id": "msg-04",
+    "channel": "email",
+    "text": "Our office in Tampere wants to order 40 ergonomic chairs before the end of the quarter. Do you offer a volume discount, and can someone from sales call us?"
+  }
+]

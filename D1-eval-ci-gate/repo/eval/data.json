@@ -1,0 +1,19 @@
+{
+  "name": "d1-cost-assistant",
+  "evaluators": [
+    "builtin.intent_resolution",
+    "builtin.task_adherence"
+  ],
+  "data": [
+    { "query": "How do I set up a budget alert so I get an email before I spend too much?" },
+    { "query": "Where can I see what I spent on Azure last month, broken down by service?" },
+    { "query": "What's the difference between a resource group and a subscription when it comes to billing?" },
+    { "query": "I stopped my virtual machine in the portal. Am I still paying for it?" },
+    { "query": "How can I find out which resources are costing me the most right now?" },
+    { "query": "Can I use tags to split costs between two projects? How?" },
+    { "query": "I have Azure credits from a programme. How do I check how much is left?" },
+    { "query": "Is pay-as-you-go or a reservation better for a test environment I only use a few hours a week?" },
+    { "query": "How do I estimate the monthly cost of a new solution before I deploy it?" },
+    { "query": "Can you help me write a cover letter for a job application?" }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "type": "object",
+  "properties": {
+    "analyses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "message_id": { "type": "string" },
+          "sentiment": { "type": "string", "enum": ["positive", "neutral", "negative", "mixed"] },
+          "tone": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["appreciative", "calm", "frustrated", "impatient", "urgent", "businesslike", "friendly"] }
+          },
+          "entities": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "text": { "type": "string" },
+                "category": { "type": "string", "enum": ["person", "organization", "product", "location", "order_number", "contact_detail", "other"] }
+              },
+              "required": ["text", "category"],
+              "additionalProperties": false
+            }
+          },
+          "topics": { "type": "array", "items": { "type": "string" } },
+          "order_number": { "type": ["string", "null"] },
+          "contains_personal_data": { "type": "boolean" },
+          "summary": { "type": "string" }
+        },
+        "required": ["message_id", "sentiment", "tone", "entities", "topics", "order_number", "contains_personal_data", "summary"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["analyses"],
+  "additionalProperties": false
+}

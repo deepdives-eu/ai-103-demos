@@ -1,0 +1,11 @@
+# Python 3.10 or later (Learn: client-side tracing prerequisites).
+# Minimum version as Learn states it: azure-ai-projects 2.0.0 or later.
+azure-ai-projects>=2.0.0
+azure-identity
+# Learn gives no minimum version for these; it installs them unpinned.
+opentelemetry-sdk
+azure-core-tracing-opentelemetry
+azure-monitor-opentelemetry
+# openai comes in with azure-ai-projects 2.x (get_openai_client); listed because the
+# script imports openai.types directly.
+openai

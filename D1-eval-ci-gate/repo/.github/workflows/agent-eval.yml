@@ -1,0 +1,79 @@
+# D1: evaluation as a CI gate.
+# On a pull request that changes the agent or the eval data:
+#   1. create a new agent version from agent/instructions.md,
+#   2. compare it with the baseline version (microsoft/ai-agent-evals, report only),
+#   3. fail the job if the new version's pass rate is below PASS_RATE_MIN (scripts/gate.py).
+#
+# Sources:
+#   https://learn.microsoft.com/azure/foundry/how-to/evaluation-github-action
+#   https://learn.microsoft.com/azure/developer/github/connect-from-azure-openid-connect
+#
+# Before production use, pin each action to a reviewed full commit SHA (Learn recommends it).
+
+name: Agent evaluation gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "agent/**"
+      - "eval/**"
+      - ".github/workflows/agent-eval.yml"
+  workflow_dispatch:
+
+permissions:
+  id-token: write   # OIDC token for azure/login, no client secret
+  contents: read
+
+jobs:
+  evaluate:
+    # Fork pull requests never get a token for our Azure subscription.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment: d1-eval
+    env:
+      FOUNDRY_PROJECT_ENDPOINT: ${{ secrets.FOUNDRY_PROJECT_ENDPOINT }}
+      CHAT_DEPLOYMENT: ${{ vars.CHAT_DEPLOYMENT }}
+      AGENT_NAME: d1-cost-assistant
+      BASELINE_ID: d1-cost-assistant:${{ vars.BASELINE_VERSION }}
+      PASS_RATE_MIN: "0.8"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install packages
+        run: pip install -r requirements.txt
+
+      - name: Azure login using federated credentials
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Create candidate agent version
+        id: candidate
+        run: python scripts/create_agent.py --instructions agent/instructions.md
+
+      - name: Compare candidate with baseline (report)
+        uses: microsoft/ai-agent-evals@v3-beta
+        with:
+          azure-ai-project-endpoint: ${{ secrets.FOUNDRY_PROJECT_ENDPOINT }}
+          deployment-name: ${{ vars.CHAT_DEPLOYMENT }}
+          agent-ids: ${{ env.BASELINE_ID }},${{ steps.candidate.outputs.agent_id }}
+          baseline-agent-id: ${{ env.BASELINE_ID }}
+          data-path: ${{ github.workspace }}/eval/data.json
+
+      - name: Quality gate
+        run: >-
+          python scripts/gate.py
+          --agent "${{ steps.candidate.outputs.agent_id }}"
+          --data eval/data.json
+          --min-pass-rate "$PASS_RATE_MIN"

@@ -1,0 +1,43 @@
+// D2: find one agent run with KQL. Replace <trace-id> with the ID trace_one_run.py prints.
+// Agent spans can be in requests or dependencies (Learn: migrate-custom-to-external-agent).
+// The GenAI attributes sit in customDimensions (Properties in the workspace schema).
+
+// 1. Application Insights > Logs (Application Insights schema)
+let traceId = "<trace-id>";
+union requests, dependencies
+| where timestamp > ago(1h)
+| where operation_Id == traceId
+| project timestamp, itemType, name, duration, success, operation_ParentId,
+          op     = tostring(customDimensions["gen_ai.operation.name"]),
+          tool   = tostring(customDimensions["gen_ai.tool.name"]),
+          inTok  = toint(customDimensions["gen_ai.usage.input_tokens"]),
+          outTok = toint(customDimensions["gen_ai.usage.output_tokens"])
+| order by timestamp asc
+
+
+// 2. Log Analytics workspace > Logs (workspace schema: other table and column names)
+let traceId = "<trace-id>";
+union withsource=TableName AppRequests, AppDependencies
+| where TimeGenerated > ago(1h)
+| where OperationId == traceId
+| project TimeGenerated, TableName, Name, DurationMs, Success, ParentId, AppRoleName,
+          op     = tostring(Properties["gen_ai.operation.name"]),
+          tool   = tostring(Properties["gen_ai.tool.name"]),
+          inTok  = toint(Properties["gen_ai.usage.input_tokens"]),
+          outTok = toint(Properties["gen_ai.usage.output_tokens"])
+| order by TimeGenerated asc
+
+
+// 3. Which keys are really in customDimensions? (use when a column above comes back empty)
+union requests, dependencies
+| where timestamp > ago(1h)
+| mv-expand Key = bag_keys(customDimensions) to typeof(string)
+| summarize Spans = make_set(name), SampleValue = take_any(tostring(customDimensions[Key])) by Key
+| order by Key asc
+
+
+// 4. What did this cost in ingestion? Billed bytes per table (workspace schema)
+union AppDependencies, AppRequests, AppTraces, AppMetrics, AppExceptions
+| where TimeGenerated > ago(1d)
+| summarize BilledKB = round(sum(_BilledSize) / 1024.0, 1) by Type
+| order by BilledKB desc
