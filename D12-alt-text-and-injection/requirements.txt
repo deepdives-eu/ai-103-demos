@@ -1,0 +1,13 @@
+# Minimum versions as Microsoft Learn gives them (checked 2026-11-07):
+# azure-ai-projects and openai: https://learn.microsoft.com/azure/foundry/how-to/develop/sdk-overview
+# pydantic: "tested against ... pydantic 2.8.2" on https://learn.microsoft.com/azure/foundry/openai/how-to/structured-outputs
+# azure-ai-documentintelligence: version 1.0.2 in the Document Intelligence quickstart (API 2024-11-30)
+# azure-identity, requests: Learn gives no minimum version; latest is fine.
+# pillow: only for make_images.py; load_default(size=...) needs 10.1 or later (Pillow docs, not Learn).
+azure-ai-projects>=2.3.0
+openai>=3.0.0
+pydantic>=2.8.2
+azure-ai-documentintelligence>=1.0.2
+azure-identity
+requests
+pillow>=10.1

@@ -1,0 +1,5 @@
+# Minimum versions from https://learn.microsoft.com/azure/foundry/how-to/develop/sdk-overview (Python, "Install the Foundry SDK").
+azure-ai-projects>=2.3.0
+openai>=3.0.0
+# Learn gives no minimum version for azure-identity.
+azure-identity

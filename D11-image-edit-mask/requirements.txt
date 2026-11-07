@@ -1,0 +1,7 @@
+# Minimum version as Microsoft Learn gives it (checked 2026-11-07):
+# openai: https://learn.microsoft.com/azure/foundry/how-to/develop/sdk-overview
+# azure-identity and pillow: the image generation quickstart installs them without a version,
+# https://learn.microsoft.com/azure/foundry/openai/how-to/dall-e
+openai>=3.0.0
+azure-identity
+pillow

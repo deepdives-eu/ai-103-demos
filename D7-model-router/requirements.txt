@@ -1,0 +1,7 @@
+# Minimum versions as Microsoft Learn gives them (checked 2026-11-07):
+# https://learn.microsoft.com/azure/foundry/openai/how-to/model-router#test-model-router-with-foundry-responses-and-chat-completions
+#   Foundry Responses (Python): azure-ai-projects>=2.0.0; Chat Completions (Python): openai>=1.75.0
+# azure-identity: Learn gives no minimum version.
+azure-ai-projects>=2.0.0
+openai>=1.75.0
+azure-identity

@@ -1,0 +1,11 @@
+{
+  "_comment": "Copy to prices.json. Prices per 1 million tokens for Global Standard, from https://azure.microsoft.com/pricing/details/azure-openai/ (model router has its own line there). Keys are matched as prefixes of the model name in the response.",
+  "currency": "EUR",
+  "router_input": null,
+  "models": {
+    "gpt-5.4-nano": {"input": null, "output": null},
+    "gpt-5.4-mini": {"input": null, "output": null},
+    "gpt-5.4": {"input": null, "output": null},
+    "o4-mini": {"input": null, "output": null}
+  }
+}

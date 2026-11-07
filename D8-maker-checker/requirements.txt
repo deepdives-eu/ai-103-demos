@@ -1,0 +1,10 @@
+# Python 3.11 or later: Agent Framework 1.24 no longer supports or tests Python 3.10
+#   (https://learn.microsoft.com/agent-framework/get-started/build-with-coding-agents).
+# agent-framework 1.0.0 or later with the Foundry provider, as Learn installs them:
+#   https://learn.microsoft.com/azure/foundry-classic/how-to/how-to-migrate-prompt-flow-to-agent-framework
+#   FoundryChatClient: https://learn.microsoft.com/agent-framework/integrations/by-component/model-providers/microsoft-foundry
+agent-framework>=1.0.0
+agent-framework-foundry
+# Learn gives no minimum version for azure-identity or pydantic.
+azure-identity
+pydantic

@@ -1,0 +1,22 @@
+[
+  {"speaker": "agent",  "tone": "friendly and upbeat",
+   "text": "Thanks for calling Lumo Home support, this is Alex. How can I help?"},
+  {"speaker": "caller", "tone": "tired and flat, start with a long sigh",
+   "text": "Hi. It's Robin. I'm calling about order LH-20417 again. The replacement grinder still hasn't arrived."},
+  {"speaker": "agent",  "tone": "warm, a short pause while checking",
+   "text": "I'm sorry about that. Let me check. Okay, I can see the courier marked it as delivered on Monday."},
+  {"speaker": "caller", "tone": "irritated and clipped",
+   "text": "Well, it wasn't. I was home all day."},
+  {"speaker": "agent",  "tone": "apologetic and calm",
+   "text": "I understand. I'll open a claim with the courier and send a new one by express today."},
+  {"speaker": "caller", "tone": "heavy sarcasm, slow, with an exaggerated sigh",
+   "text": "Great. Wonderful. That's the third time I've heard that."},
+  {"speaker": "agent",  "tone": "calm and sincere",
+   "text": "I know, and I'm sorry. I'll also refund your shipping, and I'll call you on Thursday to confirm it arrived."},
+  {"speaker": "caller", "tone": "hesitant and quiet, after a long pause",
+   "text": "Thursday. Okay. I suppose that works."},
+  {"speaker": "agent",  "tone": "friendly",
+   "text": "You'll get a confirmation email within the hour. Is there anything else I can help with?"},
+  {"speaker": "caller", "tone": "tired, but a little softer than before",
+   "text": "No. That's all. Thanks."}
+]

@@ -1,0 +1,10 @@
+# Checked against Microsoft Learn on 2026-11-07:
+# openai and azure-identity: the audio completions quickstart installs both without a minimum
+#   version, https://learn.microsoft.com/azure/foundry/openai/audio-completions-quickstart
+#   The Foundry SDK page asks for openai>=3.0.0 with azure-ai-projects>=2.3.0 (step 3, as in D9),
+#   https://learn.microsoft.com/azure/foundry/how-to/develop/sdk-overview
+# pydantic: "tested against ... pydantic 2.8.2" on the structured outputs page.
+azure-ai-projects>=2.3.0
+openai>=3.0.0
+pydantic>=2.8.2
+azure-identity
