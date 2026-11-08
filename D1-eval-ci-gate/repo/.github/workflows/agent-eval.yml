@@ -67,7 +67,9 @@ jobs:
         with:
           azure-ai-project-endpoint: ${{ secrets.FOUNDRY_PROJECT_ENDPOINT }}
           deployment-name: ${{ vars.CHAT_DEPLOYMENT }}
-          agent-ids: ${{ env.BASELINE_ID }},${{ steps.candidate.outputs.agent_id }}
+          # Unchanged instructions give the baseline version back; one ID then, because
+          # the action can't compare a version with itself.
+          agent-ids: ${{ steps.candidate.outputs.agent_id == env.BASELINE_ID && env.BASELINE_ID || format('{0},{1}', env.BASELINE_ID, steps.candidate.outputs.agent_id) }}
           baseline-agent-id: ${{ env.BASELINE_ID }}
           data-path: ${{ github.workspace }}/eval/data.json
 

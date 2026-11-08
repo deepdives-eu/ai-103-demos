@@ -97,7 +97,7 @@ python repo/scripts/create_agent.py --instructions repo/agent/instructions.md
 # 3. OIDC, role assignment, GitHub environment d1-eval with secrets and variables
 GH_REPO=<your-account>/ai103-d1-eval-gate ./setup_oidc.sh 1
 
-# 4. First run on main: should pass (it compares version 1 with itself)
+# 4. First run on main: should pass (same instructions, so it evaluates version 1 only)
 gh workflow run agent-eval.yml --repo <your-account>/ai103-d1-eval-gate
 gh run watch --repo <your-account>/ai103-d1-eval-gate
 ```
@@ -169,7 +169,7 @@ If a step fails:
 d1-cost-assistant:2
 ```
 
-Foundry only adds a version when the definition changes. The run on `main` uses the same instructions as the baseline, so it gets version 1 back and compares version 1 with itself. The failing PR makes version 2. A retake with different instructions makes the next number.
+Foundry only adds a version when the definition changes. The run on `main` uses the same instructions as the baseline, so it gets version 1 back. The workflow then passes only version 1 to the action (it can't compare a version with itself), and the report has no comparison. The failing PR makes version 2. A retake with different instructions makes the next number.
 
 "Quality gate" step and job summary, failing PR (numbers will vary):
 
