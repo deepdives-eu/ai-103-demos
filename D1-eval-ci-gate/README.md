@@ -68,6 +68,13 @@ So `scripts/gate.py` is the smallest extra step: one cloud evaluation of the can
 - Python 3 with a venv.
 - An empty GitHub repo for the demo, e.g. `<your-account>/ai103-d1-eval-gate` (private). The workflow has to sit at the repo root, so it can't live in this demos repo.
 
+No local tools? Azure Cloud Shell (Bash) works too. It has the Azure CLI, Git, the GitHub CLI and Python, and the Azure CLI is already signed in. Things to know:
+
+- Run `gh auth login` first. Cloud Shell signs you in to Azure, not to GitHub.
+- Use Cloud Shell with a storage account, so the venv and the clone are still there next time. Without one, files go when the session ends.
+- The session closes after 20 minutes without input. Keep the tab active while `gh run watch` is waiting.
+- Check `python3 --version`. The current Azure SDK packages need Python 3.10 or later. On an older Python, pip falls back to older versions, and if the install fails, run the setup locally instead.
+
 ## Setup
 
 ```bash
@@ -198,6 +205,9 @@ Microsoft Learn:
 - Evaluate model and agent targets: https://learn.microsoft.com/azure/foundry/observability/how-to/cloud-evaluation-targets
 - Provide data inline: https://learn.microsoft.com/azure/foundry/observability/how-to/cloud-evaluation-datasets#provide-data-inline
 - Get cloud evaluation results (polling, `result_counts`, pass rate): https://learn.microsoft.com/azure/foundry/observability/how-to/cloud-evaluation-results
+- Azure Cloud Shell overview (signed in, 20-minute timeout): https://learn.microsoft.com/azure/cloud-shell/overview
+- Cloud Shell preinstalled tools: https://learn.microsoft.com/azure/cloud-shell/features#preinstalled-tools
+- Cloud Shell FAQ (files without a storage account): https://learn.microsoft.com/azure/cloud-shell/faq-troubleshooting
 - Agent evaluators (intent resolution, task adherence): https://learn.microsoft.com/azure/foundry/concepts/evaluation-evaluators/agent-evaluators
 - Permissions for evaluation workflows: https://learn.microsoft.com/azure/foundry/observability/how-to/evaluation-permissions
 - Role-based access control for Foundry (role IDs, Foundry User): https://learn.microsoft.com/azure/foundry/concepts/rbac-foundry
