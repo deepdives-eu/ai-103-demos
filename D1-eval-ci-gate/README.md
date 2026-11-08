@@ -97,7 +97,7 @@ python repo/scripts/create_agent.py --instructions repo/agent/instructions.md
 # 3. OIDC, role assignment, GitHub environment d1-eval with secrets and variables
 GH_REPO=<your-account>/ai103-d1-eval-gate ./setup_oidc.sh 1
 
-# 4. First run on main: should pass and show both versions about equal
+# 4. First run on main: should pass (it compares version 1 with itself)
 gh workflow run agent-eval.yml --repo <your-account>/ai103-d1-eval-gate
 gh run watch --repo <your-account>/ai103-d1-eval-gate
 ```
@@ -123,6 +123,7 @@ Optional: in the repo's branch rules, make the "evaluate" check required on `mai
 If a step fails:
 
 - **The run is rejected when it starts the evaluation.** `gate.py` combines inline data (`file_content`) with an agent target (`azure_ai_target_completions`). Learn shows both, but its agent-target example uses `file_id`. If the run is rejected, upload the queries with `project.datasets.upload_file(...)` and use `{"type": "file_id", "id": ...}`.
+- **The report step fails with "missing required parameters for evaluators".** The judge deployment is missing. The action is supposed to look up what each evaluator needs and fill in `deployment-name`, but with current versions of the Azure SDK that lookup fails ("Could not fetch metadata ... Using defaults" in the log), so nothing gets filled in. That's why `eval/data.json` sets `deployment_name` for each evaluator under `evaluator_parameters`. If your deployment has a different name, change it there too.
 - **The evaluators error out.** Learn says AI-assisted evaluators need a judge deployment that supports structured outputs. The demos use `gpt-5.4-mini` for that. Check that the deployment exists and that `CHAT_DEPLOYMENT` names it.
 - **`azure/login` is rejected.** The immutable subject with an environment is built from the Learn pattern (`repo:<owner>@<owner_id>/<repo>@<repo_id>:...`). Compare the credential's subject with the one GitHub shows in the repo's OIDC settings and fix the credential.
 - **The good instructions fail the gate, or the bad ones pass.** The good instructions should pass at 0.80 and the bad ones clearly fail. If not, change the bad instructions, not the threshold.
@@ -165,17 +166,17 @@ If a step fails:
 "Create candidate agent version" step:
 
 ```
-d1-cost-assistant:3
+d1-cost-assistant:2
 ```
 
-The number depends on how many runs came before: version 1 is the baseline, the run on `main` made version 2.
+Foundry only adds a version when the definition changes. The run on `main` uses the same instructions as the baseline, so it gets version 1 back and compares version 1 with itself. The failing PR makes version 2. A retake with different instructions makes the next number.
 
 "Quality gate" step and job summary, failing PR (numbers will vary):
 
 ```
 Waiting for the evaluation run... in_progress
 ...
-**Quality gate for d1-cost-assistant:3**
+**Quality gate for d1-cost-assistant:2**
 Intent resolution: 2 of 10 rows passed, pass rate 0.20 (minimum 0.80)
 [Open the run in Foundry](https://ai.azure.com/...)
 Result: **failed**. Don't merge this agent version.

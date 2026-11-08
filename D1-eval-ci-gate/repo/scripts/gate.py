@@ -75,7 +75,7 @@ def main() -> int:
                     type="azure_ai_evaluator",
                     name="intent_resolution",
                     evaluator_name="builtin.intent_resolution",
-                    initialization_parameters={"model": judge},
+                    initialization_parameters={"deployment_name": judge},
                     data_mapping={
                         "query": "{{item.query}}",
                         "response": "{{sample.output_text}}",

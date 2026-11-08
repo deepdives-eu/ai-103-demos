@@ -4,6 +4,14 @@
     "builtin.intent_resolution",
     "builtin.task_adherence"
   ],
+  "evaluator_parameters": {
+    "builtin.intent_resolution": {
+      "deployment_name": "gpt-5.4-mini"
+    },
+    "builtin.task_adherence": {
+      "deployment_name": "gpt-5.4-mini"
+    }
+  },
   "data": [
     { "query": "How do I set up a budget alert so I get an email before I spend too much?" },
     { "query": "Where can I see what I spent on Azure last month, broken down by service?" },
