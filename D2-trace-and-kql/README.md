@@ -46,13 +46,62 @@ The cost on your subscription is small. `gpt-5.4-mini` is a model sold by Azure,
 
 ## Setup
 
+### If you haven't done this before, do it now
+
+Skip any part you already did for another demo.
+
+1. **Python extension for VS Code.** Only if you use VS Code. Open the Extensions view (Cmd+Shift+X on a Mac, Ctrl+Shift+X on Windows and Linux), search for **Python** and install the one by Microsoft. Or from a terminal:
+
+   ```bash
+   code --install-extension ms-python.python
+   ```
+
+   You don't need it to run the demo. It gives you code completion, and it lets VS Code use the virtual environment from part 3.
+
+2. **Sign in to Azure.** Check who you're signed in as:
+
+   ```bash
+   az account show --query "{user: user.name, subscription: name}" -o table
+   ```
+
+   If that fails, or shows the wrong account or subscription, sign in. Use the account that has **Foundry User** on the demo project.
+
+   ```bash
+   az login
+   ```
+
+   With several subscriptions, `az login` asks you to pick one. To switch later: `az account set --subscription "<subscription name or ID>"`. In Azure Cloud Shell you're already signed in.
+
+3. **Create the virtual environment.** Once per demo folder. It keeps this demo's packages apart from your other Python projects.
+
+   ```bash
+   cd D2-trace-and-kql
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
+
+   In VS Code, open the Command Palette, run **Python: Select Interpreter** and pick the one in `.venv`. New terminals in VS Code then activate it for you.
+
+### Create the D2 resources
+
+From `D2-trace-and-kql`:
+
+```bash
+./setup.sh                                   # rg-ai103-d2: law-ai103-d2 + appi-ai103-d2
+```
+
+### In every new terminal
+
 ```bash
 cd D2-trace-and-kql
-./setup.sh                                   # rg-ai103-d2: law-ai103-d2 + appi-ai103-d2
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+source .venv/bin/activate
 set -a; source ../common/demo.env; set +a
+export APPLICATIONINSIGHTS_CONNECTION_STRING=$(az monitor app-insights component show \
+  -g rg-ai103-d2 --app appi-ai103-d2 --query connectionString -o tsv)
 ```
+
+The last line is for step 4. The script asks the project for the Application Insights connection string first. When the portal created the connection with the project's managed identity, the SDK can't read it from there, and the script uses this variable instead. The connection string isn't a secret: Learn says it isn't a security token or key.
 
 Open `trace_one_run.py` and `queries.kql` in your editor. You will read the code in step 3 and paste the queries in steps 6, 7 and 9.
 
@@ -80,13 +129,15 @@ Open `trace_one_run.py` and `queries.kql` in your editor. You will read the code
 
 3. **Read the code.** Open `trace_one_run.py` and go through it top to bottom: `AZURE_EXPERIMENTAL_ENABLE_GENAI_TRACING`, content recording, `configure_azure_monitor` with the connection string from `project.telemetry`, `AIProjectInstrumentor().instrument()`, the function tool, `@trace_function`, the root span, the tool loop.
 
-   Client-side tracing is opt-in, and it's preview. The flag must be set before you instrument. The connection string comes from the project, so there's no secret in the code. Message content is recorded because this is a demo. In production you usually don't.
+   Client-side tracing is opt-in, and it's preview. The flag must be set before you instrument. The connection string comes from the project, or from the Application Insights resource when the project's connection uses managed identity. Either way there's no secret in the code. Message content is recorded because this is a demo. In production you usually don't.
 
 4. **Run it.**
 
    ```bash
    python trace_one_run.py
    ```
+
+   The first line says where the Application Insights connection string came from. If the script stops with "Application Insights connection does not use API Key credentials", run the `export` line from "In every new terminal" and run it again.
 
    The agent can't know the exam weights, so it has to call the function. That's a round trip: the model asks for the tool, your code runs it, you send the result back. Note the trace ID at the end. You will search for it in the next steps.
 
@@ -123,6 +174,7 @@ Open `trace_one_run.py` and `queries.kql` in your editor. You will read the code
 ## Expected output
 
 ```text
+Application Insights connection string: from the project connection
 Agent: d2-trace-demo version 1 (id: d2-trace-demo:1)
 Tool call: get_exam_weight({'skill_area': 'plan and manage'}) -> 25-30%
 Answer: Planning and managing an Azure AI solution is 25-30% of the AI-103 exam.
@@ -133,7 +185,7 @@ Trace ID (operation_Id): 4bf92f3577b34da6a3ce929d0e0e4736
 Spans sent. Traces typically take 2-5 minutes to show up.
 ```
 
-The ID formats in the first and last lines are examples. In KQL, expect rows with `gen_ai.operation.name` values such as `invoke_agent`, `chat` and `execute_tool` (OpenTelemetry GenAI conventions), plus `lookup_exam_weight` from `@trace_function`, which records the parameter and return value as `code.function.parameter.skill_area` and `code.function.return.value`. Exact span names can differ between client-side and server-side spans.
+With a managed-identity connection the first line says `from APPLICATIONINSIGHTS_CONNECTION_STRING` instead. The ID formats in the agent and trace ID lines are examples. In KQL, expect rows with `gen_ai.operation.name` values such as `invoke_agent`, `chat` and `execute_tool` (OpenTelemetry GenAI conventions), plus `lookup_exam_weight` from `@trace_function`, which records the parameter and return value as `code.function.parameter.skill_area` and `code.function.return.value`. Exact span names can differ between client-side and server-side spans.
 
 ## Cleanup
 
@@ -169,8 +221,15 @@ Microsoft Learn:
 - Logs cost, table plans (31 days included, queries on Analytics tables not charged): https://learn.microsoft.com/azure/azure-monitor/logs/cost-logs#table-plans
 - Billed size per table query: https://learn.microsoft.com/azure/azure-monitor/logs/analyze-usage#query-application-insights-data-volume
 - AI-103 study guide: https://learn.microsoft.com/credentials/certifications/resources/study-guides/ai-103
+- Sign in with `az login`, subscription selector, `az account set`: https://learn.microsoft.com/cli/azure/authenticate-azure-cli-interactively?view=azure-cli-latest
+- Python extension for VS Code: https://learn.microsoft.com/azure/developer/python/configure-python-web-app-local-environment#working-with-visual-studio-code
+- `APPLICATIONINSIGHTS_CONNECTION_STRING`: https://learn.microsoft.com/azure/azure-monitor/app/opentelemetry-configuration#connection-string
+- The connection string isn't a security token or key: https://learn.microsoft.com/azure/azure-monitor/app/javascript-sdk#get-started
 
 Other:
+
+- Python in VS Code, select an interpreter: https://code.visualstudio.com/docs/python/environments
+- `venv`: https://docs.python.org/3/library/venv.html
 
 - OpenTelemetry GenAI semantic conventions: https://github.com/open-telemetry/semantic-conventions-genai/tree/main/docs/gen-ai
 

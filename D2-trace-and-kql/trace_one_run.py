@@ -11,10 +11,13 @@ Clean: python trace_one_run.py --delete-agent
 Sources:
 https://learn.microsoft.com/azure/foundry/observability/how-to/trace-agent-client-side
 https://learn.microsoft.com/azure/foundry/agents/how-to/tools/function-calling?pivots=python
+https://learn.microsoft.com/azure/azure-monitor/app/opentelemetry-configuration#connection-string
+https://learn.microsoft.com/azure/azure-monitor/app/javascript-sdk#get-started (not a security token)
 """
 
 import argparse
 import json
+import logging
 import os
 import sys
 from pathlib import Path
@@ -34,6 +37,8 @@ from azure.identity import DefaultAzureCredential  # noqa: E402
 from azure.monitor.opentelemetry import configure_azure_monitor  # noqa: E402
 from openai.types.responses.response_input_param import FunctionCallOutput  # noqa: E402
 from opentelemetry import trace  # noqa: E402
+from opentelemetry._logs import get_logger_provider  # noqa: E402
+from opentelemetry.metrics import get_meter_provider  # noqa: E402
 
 AGENT_NAME = "d2-trace-demo"
 STATE_FILE = Path(__file__).with_name(".last_run.json")  # local only, not committed
@@ -89,9 +94,35 @@ def delete_agent(project: AIProjectClient) -> None:
     print(f"Deleted agent {state['agent_name']} version {state['agent_version']}")
 
 
+def app_insights_connection_string(project: AIProjectClient) -> str:
+    """The connection string of the Application Insights resource connected to the project.
+
+    The SDK helper only reads connections that store the connection string as a key.
+    The portal's Connect button can create the connection with the project's managed
+    identity instead, and then the helper raises ValueError. In that case use
+    APPLICATIONINSIGHTS_CONNECTION_STRING, the variable the Azure Monitor distro reads.
+    Learn: the connection string isn't a security token or key.
+    """
+    try:
+        conn = project.telemetry.get_application_insights_connection_string()
+        print("Application Insights connection string: from the project connection")
+        return conn
+    except ValueError as err:
+        conn = os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING")
+        if conn:
+            print(f"Application Insights connection string: from APPLICATIONINSIGHTS_CONNECTION_STRING ({err})")
+            return conn
+        sys.exit(
+            f"{err}\nThe project connection uses managed identity. Set the connection string "
+            "from the resource and run again:\n"
+            "  export APPLICATIONINSIGHTS_CONNECTION_STRING=$(az monitor app-insights component show "
+            "-g rg-ai103-d2 --app appi-ai103-d2 --query connectionString -o tsv)"
+        )
+
+
 def run(project: AIProjectClient) -> None:
     # Client-side spans go to the Application Insights resource connected to the project.
-    configure_azure_monitor(connection_string=project.telemetry.get_application_insights_connection_string())
+    configure_azure_monitor(connection_string=app_insights_connection_string(project))
     AIProjectInstrumentor().instrument()
     tracer = trace.get_tracer(__name__)
 
@@ -151,10 +182,17 @@ def run(project: AIProjectClient) -> None:
         "trace_id": trace_id,
     }))
 
-    # Send the spans now instead of waiting for the batch exporter.
-    provider = trace.get_tracer_provider()
-    if hasattr(provider, "force_flush"):
-        provider.force_flush()
+    # Send the spans now instead of waiting for the batch exporter, then shut down.
+    # Learn (troubleshooting OpenTelemetry in Python): shut down each provider.
+    for provider in (trace.get_tracer_provider(), get_logger_provider(), get_meter_provider()):
+        if hasattr(provider, "shutdown"):
+            provider.shutdown()
+    # The distro's logging handler flushes in a new thread when Python exits, which
+    # fails at interpreter shutdown. Remove it; this script only sends traces.
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers[:]:
+        if type(handler).__module__.startswith("opentelemetry"):
+            root_logger.removeHandler(handler)
     print("Spans sent. Traces typically take 2-5 minutes to show up.")
 
 
