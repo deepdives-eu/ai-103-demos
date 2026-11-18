@@ -172,6 +172,6 @@ Microsoft Learn:
 
 Other:
 
-- OpenTelemetry GenAI semantic conventions: https://opentelemetry.io/docs/specs/semconv/gen-ai/
+- OpenTelemetry GenAI semantic conventions: https://github.com/open-telemetry/semantic-conventions-genai/tree/main/docs/gen-ai
 
 Checked against Learn on 2026-11-07.
