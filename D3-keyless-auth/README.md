@@ -42,7 +42,7 @@ set -a; source ../common/demo.env; set +a
 ## Steps
 
 1. **Read the code: two clients.** Open `auth_demo.py` and look at `key_client()` and `keyless_client()`.
-   Both point at the same endpoint, `https://<resource>.openai.azure.com/openai/v1/`. The first passes the resource key. The second passes a token provider built from `DefaultAzureCredential` with the scope `https://ai.azure.com/.default`. On your laptop that credential picks up your `az login`; deployed in Azure, the same code picks up a managed identity. `project_client()` is the third way in: the Foundry project endpoint through `AIProjectClient`, which only accepts Entra ID.
+   Both point at the same endpoint, `https://<resource>.services.ai.azure.com/openai/v1/`. Learn also allows `https://<resource>.openai.azure.com/openai/v1/`; the script doesn't use it, see the note under step 7. The first passes the resource key. The second passes a token provider built from `DefaultAzureCredential` with the scope `https://ai.azure.com/.default`. On your laptop that credential picks up your `az login`; deployed in Azure, the same code picks up a managed identity. `project_client()` is the third way in: the Foundry project endpoint through `AIProjectClient`, which only accepts Entra ID.
 
 2. **Call with the key.** Check the setting, put the key in your shell (not in a file), and call:
 
@@ -57,7 +57,7 @@ set -a; source ../common/demo.env; set +a
 
 3. **Call without a key.** `python auth_demo.py keyless`
    Expected: two lines, `[Entra ID, /openai/v1] OK ...` and `[Entra ID, project] OK ...`. Same identity, two endpoints, no secret anywhere.
-   If this step fails: a 401 usually means the token is for the wrong scope or the endpoint isn't the custom subdomain. A 403 means a missing role; run `./roles.sh show`, and `./roles.sh add` if Foundry User isn't listed.
+   If this step fails: a 401 usually means the token is for the wrong scope or the endpoint isn't the custom subdomain. A 403 (project) or a 401 with `Principal does not have access to API/Operation` (`/openai/v1`) means a missing role; run `./roles.sh show`, and `./roles.sh add` if Foundry User isn't listed.
 
 4. **Switch keys off.** `./local_auth.sh off`, then `python auth_demo.py key --until denied --minutes 30`
    This sets `disableLocalAuth` to `true` on the Foundry resource. The setting changes at once, but Learn says the gateway can keep accepting the old key for a few minutes, and in some cases for several hours. The script repeats the key call every 20 seconds until it's refused.
@@ -73,11 +73,12 @@ set -a; source ../common/demo.env; set +a
 
 7. **Take the role away.** `./roles.sh remove`, then `python auth_demo.py keyless --until denied`
    Role changes can take up to 10 minutes to apply.
-   Expected: `OK` lines for a while, then both calls `refused: HTTP 403: ...` and `Reached 'denied'.` You are still signed in, the token is still valid, but you're no longer allowed.
+   Expected: `OK` lines for a while, then `[Entra ID, /openai/v1] refused: HTTP 401: ... Principal does not have access to API/Operation.` and `[Entra ID, project] refused: HTTP 403: ...`, and `Reached 'denied'.` You are still signed in, the token is still valid, but you're no longer allowed. The v1 endpoint says 401 rather than 403 for a missing role; the project endpoint returns 403 with an empty body.
+   Note: in our dry run (19 November 2026) the same token kept working on `<resource>.openai.azure.com` for more than an hour after the role was removed, also after `az logout` and `az login`, while `<resource>.services.ai.azure.com` refused it within minutes. That's why the script uses the `services.ai.azure.com` host.
    If this step fails: if one call keeps working, you hold another data plane role on the resource. `./roles.sh show` lists it. For example, D13's setup gives you Cognitive Services OpenAI User on the Foundry resource, which also allows the `/openai/v1` call. Remove that assignment too, or accept the mixed result and explain it. Roles inherited from the resource group or subscription don't show in `roles.sh show`; check them in the portal under **Access control (IAM) > Check access**.
 
 8. **Give it back.** `./roles.sh add`, then `python auth_demo.py keyless --until ok`
-   Expected: `refused: HTTP 403` for a few minutes, then both lines `OK` and `Reached 'ok'.`
+   Expected: `refused` lines (401 and 403) for a few minutes, then both lines `OK` and `Reached 'ok'.`
    If this step fails: after 15 minutes, sign out and in again (`az logout`, `az login`); Learn says that forces a refresh of role assignment changes for the Azure CLI. Then run `python auth_demo.py keyless`.
 
 9. **Wrap up, no command.** In code, keyless is one credential object instead of a key. On the resource, `disableLocalAuth` closes the key door. And access is a role assignment per identity, which you can grant, audit and take away without rotating anything.

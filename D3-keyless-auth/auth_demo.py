@@ -13,6 +13,7 @@ CHAT_DEPLOYMENT. FOUNDRY_KEY only for `key`; README step 2 sets it in your shell
 
 Clients follow Microsoft Learn:
   key and keyless on /openai/v1/: https://learn.microsoft.com/azure/foundry/openai/how-to/responses#generate-a-text-response
+  both v1 host names:             https://learn.microsoft.com/azure/foundry/openai/api-version-lifecycle#code-changes
   keyless through the project:    https://learn.microsoft.com/azure/foundry/how-to/develop/sdk-overview
   error handling:                 https://learn.microsoft.com/azure/foundry/openai/supported-languages?pivots=programming-language-python#error-handling
 """
@@ -27,12 +28,18 @@ from azure.ai.projects import AIProjectClient
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from openai import OpenAI
 
-BASE_URL = f"https://{os.environ['FOUNDRY']}.openai.azure.com/openai/v1/"
+# Learn: base_url accepts <resource>.openai.azure.com and <resource>.services.ai.azure.com.
+# https://learn.microsoft.com/azure/foundry/openai/api-version-lifecycle#code-changes
+# The demo uses services.ai.azure.com: in the 19 November 2026 dry run, openai.azure.com kept
+# answering a token whose Foundry User role had been removed, services.ai.azure.com refused it.
+BASE_URL = f"https://{os.environ['FOUNDRY']}.services.ai.azure.com/openai/v1/"
 MODEL = os.environ["CHAT_DEPLOYMENT"]
 PROMPT = "In one short sentence: why should production apps avoid API keys?"
 # gpt-5.4-mini is a reasoning model; low effort and a token cap keep each call cheap.
 CALL = dict(model=MODEL, input=PROMPT, reasoning={"effort": "low"}, max_output_tokens=500)
 POLL_SECONDS = 20
+# On a laptop DefaultAzureCredential gets the token from `az`, which can take longer than the default 10 s.
+AZ_TIMEOUT = 30
 
 
 def key_client():
@@ -44,19 +51,24 @@ def key_client():
 
 def keyless_client():
     # Learn passes the token provider itself, so the client refreshes the token when it expires.
-    token_provider = get_bearer_token_provider(DefaultAzureCredential(), "https://ai.azure.com/.default")
+    token_provider = get_bearer_token_provider(
+        DefaultAzureCredential(process_timeout=AZ_TIMEOUT), "https://ai.azure.com/.default"
+    )
     return OpenAI(base_url=BASE_URL, api_key=token_provider)
 
 
 def project_client():
-    project = AIProjectClient(endpoint=os.environ["FOUNDRY_PROJECT_ENDPOINT"], credential=DefaultAzureCredential())
+    project = AIProjectClient(
+        endpoint=os.environ["FOUNDRY_PROJECT_ENDPOINT"],
+        credential=DefaultAzureCredential(process_timeout=AZ_TIMEOUT),
+    )
     return project.get_openai_client()
 
 
-def call(label, make_client):
+def call(label, client):
     """One Responses call. Returns True if it worked, False if the service refused it."""
     try:
-        response = make_client().responses.create(**CALL)
+        response = client.responses.create(**CALL)
     except openai.APIStatusError as e:
         print(f"[{label}] refused: HTTP {e.status_code}: {e.message}")
         return False
@@ -67,8 +79,10 @@ def call(label, make_client):
 def run(calls, until, minutes):
     """Run the calls once, or repeat them until every call is `ok` or every call is `denied`."""
     deadline = time.time() + minutes * 60
+    # One client per endpoint for the whole run, so a repeat reuses the token instead of asking `az` again.
+    clients = [(label, make()) for label, make in calls]
     while True:
-        results = [call(label, make) for label, make in calls]
+        results = [call(label, client) for label, client in clients]
         if until is None:
             return
         if (until == "ok" and all(results)) or (until == "denied" and not any(results)):
