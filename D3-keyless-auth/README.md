@@ -53,7 +53,7 @@ set -a; source ../common/demo.env; set +a
    ```
 
    Expected: `disableLocalAuth on <name>:` followed by nothing or `false`, then `[api key, /openai/v1] OK (n tokens): ...`.
-   If this step fails: an empty `FOUNDRY_KEY` means `keys list` returned nothing; run it without `--query` and look at the field names. A 401 here means key auth is already off; run `./local_auth.sh on`, wait, and try again, or skip to step 3.
+   If this step fails: an empty `FOUNDRY_KEY` means `keys list` returned nothing; run it without `--query` and look at the field names. If `keys list` fails with `InvalidApiVersionParameter`, `$RG` is empty in your shell (an empty resource group sends the request to the wrong path); run the Setup line `set -a; source ../common/demo.env; set +a` again. A 401 here means key auth is already off; run `./local_auth.sh on`, wait, and try again, or skip to step 3.
 
 3. **Call without a key.** `python auth_demo.py keyless`
    Expected: two lines, `[Entra ID, /openai/v1] OK ...` and `[Entra ID, project] OK ...`. Same identity, two endpoints, no secret anywhere.
