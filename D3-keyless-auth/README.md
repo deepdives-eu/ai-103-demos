@@ -17,7 +17,7 @@ This demo covers keyless credentials and role policies for your own user. Manage
 
 Tokens only, nothing billed by the hour. Every successful call is one short Responses request to `gpt-5.4-mini`: a one-sentence question, a one-sentence answer, reasoning effort low, output capped at 500 tokens. The script prints the token count after every call.
 
-- **Successful calls**: about seven over the whole demo (step 2 once, steps 3, 5 and 8 twice each because `keyless` calls two endpoints), plus the polling in steps 4 and 7.
+- **Successful calls**: about four over the whole demo (steps 2, 3, 5 and 8 once each), plus the polling in steps 4 and 7.
 - **Refused calls**: a 401 or 403 returns no answer and no token count. The polling in steps 4 and 7 repeats a call every 20 seconds, and until the change applies those calls still succeed and use tokens. Keep `--minutes` short if you're careful with cost; each call is small.
 - **Role assignments and the `disableLocalAuth` setting**: control plane changes, no charge.
 
@@ -42,7 +42,7 @@ set -a; source ../common/demo.env; set +a
 ## Steps
 
 1. **Read the code: two clients.** Open `auth_demo.py` and look at `key_client()` and `keyless_client()`.
-   Both point at the same endpoint, `https://<resource>.services.ai.azure.com/openai/v1/`. Learn also allows `https://<resource>.openai.azure.com/openai/v1/`; the script doesn't use it, see the note under step 7. The first passes the resource key. The second passes a token provider built from `DefaultAzureCredential` with the scope `https://ai.azure.com/.default`. On your laptop that credential picks up your `az login`; deployed in Azure, the same code picks up a managed identity. `project_client()` is the third way in: the Foundry project endpoint through `AIProjectClient`, which only accepts Entra ID.
+   `key_client()` calls the resource's endpoint, `https://<resource>.openai.azure.com/openai/v1/`, with the resource key. `keyless_client()` goes through the Foundry project endpoint with `AIProjectClient` and `DefaultAzureCredential`; that endpoint only accepts Entra ID. On your laptop the credential picks up your `az login`; deployed in Azure, the same code picks up a managed identity. Both make the same Responses call.
 
 2. **Call with the key.** Check the setting, put the key in your shell (not in a file), and call:
 
@@ -52,20 +52,20 @@ set -a; source ../common/demo.env; set +a
    python auth_demo.py key
    ```
 
-   Expected: `disableLocalAuth on <name>:` followed by nothing or `false`, then `[api key, /openai/v1] OK (n tokens): ...`.
+   Expected: `disableLocalAuth on <name>:` followed by nothing or `false`, then `[api key, resource endpoint] OK (n tokens): ...`.
    If this step fails: an empty `FOUNDRY_KEY` means `keys list` returned nothing; run it without `--query` and look at the field names. If `keys list` fails with `InvalidApiVersionParameter`, `$RG` is empty in your shell (an empty resource group sends the request to the wrong path); run the Setup line `set -a; source ../common/demo.env; set +a` again. A 401 here means key auth is already off; run `./local_auth.sh on`, wait, and try again, or skip to step 3.
 
 3. **Call without a key.** `python auth_demo.py keyless`
-   Expected: two lines, `[Entra ID, /openai/v1] OK ...` and `[Entra ID, project] OK ...`. Same identity, two endpoints, no secret anywhere.
-   If this step fails: a 401 usually means the token is for the wrong scope or the endpoint isn't the custom subdomain. A 403 (project) or a 401 with `Principal does not have access to API/Operation` (`/openai/v1`) means a missing role; run `./roles.sh show`, and `./roles.sh add` if Foundry User isn't listed.
+   Expected: `[Entra ID, project endpoint] OK ...`. Same answer, no secret anywhere.
+   If this step fails: a 401 usually means you're signed in to the wrong tenant or `FOUNDRY_PROJECT_ENDPOINT` is wrong. A 403 means a missing role; run `./roles.sh show`, and `./roles.sh add` if Foundry User isn't listed.
 
 4. **Switch keys off.** `./local_auth.sh off`, then `python auth_demo.py key --until denied --minutes 30`
    This sets `disableLocalAuth` to `true` on the Foundry resource. The setting changes at once, but Learn says the gateway can keep accepting the old key for a few minutes, and in some cases for several hours. The script repeats the key call every 20 seconds until it's refused.
-   Expected: `disableLocalAuth on <name>: true`, a few `OK` lines, then `[api key, /openai/v1] refused: HTTP 401: ...` and `Reached 'denied'.` Learn gives the error as `Access denied due to invalid subscription key or wrong API endpoint`.
+   Expected: `disableLocalAuth on <name>: true`, a few `OK` lines, then `[api key, resource endpoint] refused: HTTP 401: ...` and `Reached 'denied'.` Learn gives the error as `Access denied due to invalid subscription key or wrong API endpoint`.
    If this step fails: if `az resource update` is rejected, use the PowerShell route Learn documents, `Set-AzCognitiveServicesAccount -ResourceGroupName <rg> -Name <name> -DisableLocalAuth $true`. If the key still works after 30 minutes, run the same command again later; don't move on until it's refused.
 
 5. **Keyless still works.** `python auth_demo.py keyless`
-   Expected: both lines `OK`, exactly as in step 3. Switching keys off changes nothing for Entra ID callers.
+   Expected: `OK`, exactly as in step 3. Switching keys off changes nothing for Entra ID callers.
 
 6. **What lets the keyless call in.** `./roles.sh show`
    Expected: a table with Foundry User (it may still show as Azure AI User during the rename) and role ID `.../53ca6127-db72-4b80-b1b0-d745d6d5456d`.
@@ -73,12 +73,11 @@ set -a; source ../common/demo.env; set +a
 
 7. **Take the role away.** `./roles.sh remove`, then `python auth_demo.py keyless --until denied`
    Role changes can take up to 10 minutes to apply.
-   Expected: `OK` lines for a while, then `[Entra ID, /openai/v1] refused: HTTP 401: ... Principal does not have access to API/Operation.` and `[Entra ID, project] refused: HTTP 403: ...`, and `Reached 'denied'.` You are still signed in, the token is still valid, but you're no longer allowed. The v1 endpoint says 401 rather than 403 for a missing role; the project endpoint returns 403 with an empty body.
-   Note: in our dry run (19 November 2026) the same token kept working on `<resource>.openai.azure.com` for more than an hour after the role was removed, also after `az logout` and `az login`, while `<resource>.services.ai.azure.com` refused it within minutes. That's why the script uses the `services.ai.azure.com` host.
-   If this step fails: if one call keeps working, you hold another data plane role on the resource. `./roles.sh show` lists it. For example, D13's setup gives you Cognitive Services OpenAI User on the Foundry resource, which also allows the `/openai/v1` call. Remove that assignment too, or accept the mixed result and explain it. Roles inherited from the resource group or subscription don't show in `roles.sh show`; check them in the portal under **Access control (IAM) > Check access**.
+   Expected: `OK` lines for a while, then `[Entra ID, project endpoint] refused: HTTP 403: Error code: 403` (the body is empty) and `Reached 'denied'.` You are still signed in, the token is still valid, but you're no longer allowed. In our dry run it took about 10 minutes.
+   If this step fails: if the call keeps working, you may hold another data plane role on the resource. `./roles.sh show` lists it. For example, D13's setup gives you Cognitive Services OpenAI User on the Foundry resource. Remove that assignment too, or explain the result. Roles inherited from the resource group or subscription don't show in `roles.sh show`; check them in the portal under **Access control (IAM) > Check access**.
 
 8. **Give it back.** `./roles.sh add`, then `python auth_demo.py keyless --until ok`
-   Expected: `refused` lines (401 and 403) for a few minutes, then both lines `OK` and `Reached 'ok'.`
+   Expected: `refused: HTTP 403` for a few minutes, then `OK` and `Reached 'ok'.`
    If this step fails: after 15 minutes, sign out and in again (`az logout`, `az login`); Learn says that forces a refresh of role assignment changes for the Azure CLI. Then run `python auth_demo.py keyless`.
 
 9. **Wrap up, no command.** In code, keyless is one credential object instead of a key. On the resource, `disableLocalAuth` closes the key door. And access is a role assignment per identity, which you can grant, audit and take away without rotating anything.
@@ -99,6 +98,7 @@ This assigns Foundry User to you again, in case you stopped after step 7, and sh
 - To enforce this for every Foundry resource in a subscription or resource group, Learn points to the Azure Policy "Azure AI Services resources should have key access disabled (disable local authentication)". In Bicep or ARM, set `disableLocalAuth: true` on the account.
 - For an app that only calls agents, Foundry Agent Consumer is enough. Foundry User is the starting point for developers and for the project's managed identity.
 - Learn's keyless how-to for Foundry Models assigns Cognitive Services User, while the Foundry RBAC page says not to assign roles that start with Cognitive Services for Foundry work. This demo follows the RBAC page and uses Foundry User.
+- Why the keyless call goes through the project: in our dry run (19 and 20 November 2026) the `/openai/v1` endpoint with an Entra ID token didn't follow Foundry User being removed and added. `<resource>.openai.azure.com` kept answering without the role, and `<resource>.services.ai.azure.com` kept refusing with `401 Principal does not have access to API/Operation` after the role was back (Learn's Foundry Models troubleshooting suggests Cognitive Services User for that error). The project endpoint followed the role both ways.
 
 ## Sources
 

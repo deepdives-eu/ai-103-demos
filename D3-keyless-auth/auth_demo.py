@@ -3,8 +3,7 @@
 One script, one call per subcommand, so each step can be run and explained on screen:
 
   python auth_demo.py key              Responses call with the resource's API key (env FOUNDRY_KEY)
-  python auth_demo.py keyless          the same call with DefaultAzureCredential, twice:
-                                       on the resource's OpenAI v1 endpoint and through the Foundry project
+  python auth_demo.py keyless          the same call with DefaultAzureCredential, through the Foundry project
   python auth_demo.py key --until denied     repeat the key call every 20 s until the service refuses it
   python auth_demo.py keyless --until ok     repeat the keyless call until it works again (role propagation)
 
@@ -12,10 +11,9 @@ The key is never printed. Env vars from ../common/demo.env: FOUNDRY, FOUNDRY_PRO
 CHAT_DEPLOYMENT. FOUNDRY_KEY only for `key`; README step 2 sets it in your shell, not in a file.
 
 Clients follow Microsoft Learn:
-  key and keyless on /openai/v1/: https://learn.microsoft.com/azure/foundry/openai/how-to/responses#generate-a-text-response
-  both v1 host names:             https://learn.microsoft.com/azure/foundry/openai/api-version-lifecycle#code-changes
-  keyless through the project:    https://learn.microsoft.com/azure/foundry/how-to/develop/sdk-overview
-  error handling:                 https://learn.microsoft.com/azure/foundry/openai/supported-languages?pivots=programming-language-python#error-handling
+  key on /openai/v1/:          https://learn.microsoft.com/azure/foundry/openai/how-to/responses#generate-a-text-response
+  keyless through the project: https://learn.microsoft.com/azure/foundry/how-to/develop/sdk-overview
+  error handling:              https://learn.microsoft.com/azure/foundry/openai/supported-languages?pivots=programming-language-python#error-handling
 """
 
 import argparse
@@ -25,14 +23,10 @@ import time
 
 import openai
 from azure.ai.projects import AIProjectClient
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+from azure.identity import DefaultAzureCredential
 from openai import OpenAI
 
-# Learn: base_url accepts <resource>.openai.azure.com and <resource>.services.ai.azure.com.
-# https://learn.microsoft.com/azure/foundry/openai/api-version-lifecycle#code-changes
-# The demo uses services.ai.azure.com: in the 19 November 2026 dry run, openai.azure.com kept
-# answering a token whose Foundry User role had been removed, services.ai.azure.com refused it.
-BASE_URL = f"https://{os.environ['FOUNDRY']}.services.ai.azure.com/openai/v1/"
+BASE_URL = f"https://{os.environ['FOUNDRY']}.openai.azure.com/openai/v1/"
 MODEL = os.environ["CHAT_DEPLOYMENT"]
 PROMPT = "In one short sentence: why should production apps avoid API keys?"
 # gpt-5.4-mini is a reasoning model; low effort and a token cap keep each call cheap.
@@ -50,14 +44,7 @@ def key_client():
 
 
 def keyless_client():
-    # Learn passes the token provider itself, so the client refreshes the token when it expires.
-    token_provider = get_bearer_token_provider(
-        DefaultAzureCredential(process_timeout=AZ_TIMEOUT), "https://ai.azure.com/.default"
-    )
-    return OpenAI(base_url=BASE_URL, api_key=token_provider)
-
-
-def project_client():
+    # The project endpoint only accepts Microsoft Entra ID. The credential refreshes the token itself.
     project = AIProjectClient(
         endpoint=os.environ["FOUNDRY_PROJECT_ENDPOINT"],
         credential=DefaultAzureCredential(process_timeout=AZ_TIMEOUT),
@@ -96,8 +83,8 @@ def run(calls, until, minutes):
 
 
 STEPS = {
-    "key": [("api key, /openai/v1", key_client)],
-    "keyless": [("Entra ID, /openai/v1", keyless_client), ("Entra ID, project", project_client)],
+    "key": [("api key, resource endpoint", key_client)],
+    "keyless": [("Entra ID, project endpoint", keyless_client)],
 }
 
 if __name__ == "__main__":
